@@ -17,6 +17,7 @@ import 'package:aves/widgets/settings/common/tiles/switch_list.dart';
 import 'package:aves/widgets/settings/privacy/access_grants_page.dart';
 import 'package:aves/widgets/settings/privacy/hidden_items_page.dart';
 import 'package:aves/widgets/settings/privacy/permissions/permissions_tile.dart';
+import 'package:aves/widgets/settings/privacy/scan_paths_page.dart';
 import 'package:aves/widgets/settings/settings_definition.dart';
 import 'package:aves_model/aves_model.dart';
 import 'package:material_ui/material_ui.dart';
@@ -40,6 +41,7 @@ class PrivacySection extends SettingsSection {
     return [
       SettingsTilePermissions(),
       SettingsTilePrivacyHiddenItems(),
+      SettingsTilePrivacyScanPaths(),
       if (!settings.useTvLayout) SettingsTilePrivacyStorageAccess(),
       if (!settings.useTvLayout) SettingsTilePrivacyEnableBin(),
       SettingsTilePrivacySaveSearchHistory(),
@@ -178,5 +180,20 @@ class SettingsTilePrivacyStorageAccess extends SettingsTile {
     title: title,
     routeName: StorageAccessPage.routeName,
     builder: (context) => const StorageAccessPage(),
+  );
+}
+
+class SettingsTilePrivacyScanPaths extends SettingsTile {
+  @override
+  List<String> get settingKeys => ScanPathsPage.settingKeys;
+
+  @override
+  String title(BuildContext context) => context.l10n.settingsScanPathsTile;
+
+  @override
+  Widget build(BuildContext context) => SettingsSubPageTile(
+    title: title,
+    routeName: ScanPathsPage.routeName,
+    builder: (context) => const ScanPathsPage(),
   );
 }

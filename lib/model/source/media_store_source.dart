@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:aves/model/covers.dart';
 import 'package:aves/model/dynamic_albums.dart';
@@ -108,6 +109,18 @@ class MediaStoreSource extends CollectionSource {
     debugPrint('$runtimeType load ${stopwatch.elapsed} fetch known entries');
     final knownEntries = await localMediaDb.loadEntries(origin: EntryOrigins.mediaStoreContent, directory: scopeDirectory);
     final knownLiveEntries = knownEntries.where((entry) => !entry.trashed).toSet();
+
+    // entries from user-included directories, scanned from the file system
+    final includedPaths = settings.scanIncludedPaths;
+    final knownFileEntries = includedPaths.isEmpty || scopeDirectory != null ? <AvesEntry>{} : await localMediaDb.loadEntries(origin: EntryOrigins.file);
+    final obsoleteFileEntries = knownFileEntries.where((entry) {
+      final path = entry.path;
+      if (path == null || settings.isPathExcludedFromScan(path)) return true;
+      // keep only entries that are still within an included directory and still exist
+      final isIncluded = includedPaths.any((dirPath) => path.startsWith(dirPath.endsWith('/') ? dirPath : '$dirPath/'));
+      return !isIncluded || !File(path).existsSync();
+    }).toSet();
+    knownFileEntries.removeAll(obsoleteFileEntries);
     final isLargeCollection = knownEntries.length > 100000;
     if (isLargeCollection && settings.isErrorReportingAllowed) {
       // disable error reporting for large collections, to prevent noisy OOM reports
@@ -126,6 +139,9 @@ class MediaStoreSource extends CollectionSource {
     }
     final removedEntries = knownEntries.where((entry) => removedContentIds.contains(entry.contentId)).toSet();
     knownEntries.removeAll(removedEntries);
+    // leave out entries of excluded directories (they remain in the DB so that excluding is reversible)
+    knownEntries.removeWhere((entry) => settings.isPathExcludedFromScan(entry.path));
+    knownEntries.addAll(knownFileEntries);
 
     // show known entries
     debugPrint('$runtimeType load ${stopwatch.elapsed} add known entries');
@@ -164,9 +180,10 @@ class MediaStoreSource extends CollectionSource {
     updateDerivedFilters();
 
     // clean up obsolete entries
-    if (removedEntries.isNotEmpty) {
+    final obsoleteEntries = {...removedEntries, ...obsoleteFileEntries};
+    if (obsoleteEntries.isNotEmpty) {
       debugPrint('$runtimeType load ${stopwatch.elapsed} remove obsolete entries');
-      await localMediaDb.removeIds(removedEntries.map((entry) => entry.id).toSet());
+      await localMediaDb.removeIds(obsoleteEntries.map((entry) => entry.id).toSet());
     }
 
     _loadedScope = _targetScope;
@@ -179,6 +196,7 @@ class MediaStoreSource extends CollectionSource {
         directory: scopeDirectory,
         knownLiveEntries: knownLiveEntries,
         knownDateByContentId: knownDateByContentId,
+        knownFilePaths: knownFileEntries.map((entry) => entry.path).nonNulls.toSet(),
       );
     } else {
       state = SourceState.ready;
@@ -190,6 +208,7 @@ class MediaStoreSource extends CollectionSource {
     required String? directory,
     required Set<AvesEntry> knownLiveEntries,
     required Map<int?, int?> knownDateByContentId,
+    Set<String> knownFilePaths = const {},
   }) async {
     unawaited(reportService.log('$runtimeType load (new) start'));
     final stopwatch = Stopwatch()..start();
@@ -215,12 +234,34 @@ class MediaStoreSource extends CollectionSource {
       knownDateByContentId[contentId] = 0;
     });
 
+    // fetch new entries from user-included directories (incl. hidden ones, if enabled)
+    final includedPaths = settings.scanIncludedPaths;
+    if (directory == null && includedPaths.isNotEmpty) {
+      debugPrint('$runtimeType load ${stopwatch.elapsed} scan included paths');
+      try {
+        final fileEntries = await mediaStoreService
+            .getFileEntries(
+              includedPaths: includedPaths,
+              knownFilePaths: knownFilePaths,
+              scanHidden: settings.scanHiddenFolders,
+              excludedPaths: settings.scanExcludedPaths,
+            )
+            .toList();
+        for (final entry in fileEntries) {
+          entry.id = localMediaDb.nextId;
+          newEntries.add(entry);
+        }
+      } catch (error) {
+        debugPrint('$runtimeType included paths scan error=$error');
+      }
+    }
+
     // fetch new & modified entries
     debugPrint('$runtimeType load ${stopwatch.elapsed} fetch new entries');
     final knownContentIds = knownDateByContentId.keys.toSet();
     final knownEntryByContentId = Map.fromEntries(knownLiveEntries.map((entry) => MapEntry(entry.contentId, entry)));
     mediaStoreService
-        .getEntries(knownDateByContentId, directory: directory)
+        .getEntries(knownDateByContentId, directory: directory, excludedPaths: settings.scanExcludedPaths)
         .listen(
           (entry) {
             // when discovering modified entry with known content ID,

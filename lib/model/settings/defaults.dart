@@ -122,6 +122,9 @@ class SettingsDefaults {
   // search
   static const saveSearchHistory = true;
 
+  // scan
+  static const scanHiddenFolders = false;
+
   // map
   static const mapShowItemTracks = false;
 

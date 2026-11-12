@@ -1033,6 +1033,17 @@
   "settingsHiddenItemsTile": "Hidden items",
   "settingsHiddenItemsPageTitle": "Hidden Items",
 
+  "settingsScanPathsTile": "Scan folders",
+  "settingsScanPathsPageTitle": "Scan Folders",
+  "settingsScanPathsBanner": "Add folders to scan directly, even if the system gallery index ignores them, and folders to leave out of your collection.",
+  "settingsScanHiddenFolders": "Show hidden folders",
+  "settingsScanHiddenFoldersSubtitle": "Include folders and files starting with a dot when scanning added folders",
+  "settingsScanIncludedPaths": "Folders to include",
+  "settingsScanExcludedPaths": "Folders to exclude",
+  "settingsScanPathsEmpty": "No folders",
+  "settingsScanAddPathTooltip": "Add folder",
+  "settingsScanPathsApplyHint": "Changes apply the next time the collection is scanned (e.g. when restarting the app).",
+
   "settingsHiddenFiltersBanner": "Photos and videos matching hidden filters will not appear in your collection.",
   "settingsHiddenFiltersEmpty": "No hidden filters",
 

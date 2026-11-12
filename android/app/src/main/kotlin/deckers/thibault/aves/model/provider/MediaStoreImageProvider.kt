@@ -49,8 +49,16 @@ class MediaStoreImageProvider : ImageProvider() {
         knownEntries: Map<Long?, Long?>,
         directory: String?,
         handleNewEntry: NewEntryHandler,
+        excludedPaths: List<String> = emptyList(),
     ) {
-        Log.d(LOG_TAG, "fetching all media store items for ${knownEntries.size} known entries, directory=$directory")
+        Log.d(LOG_TAG, "fetching all media store items for ${knownEntries.size} known entries, directory=$directory, excluded=${excludedPaths.size}")
+        val excludedPrefixes = excludedPaths.map { ensureTrailingSeparator(it) }
+        val handleNewUnlessExcluded: NewEntryHandler = fun(entry: FieldMap) {
+            val path = entry[EntryFields.PATH] as String?
+            if (path == null || excludedPrefixes.none { path.startsWith(it) }) {
+                handleNewEntry(entry)
+            }
+        }
         val isModified = fun(contentId: Long, dateModifiedMillis: Long): Boolean {
             val knownDate = knownEntries[contentId]
             return knownDate == null || knownDate < dateModifiedMillis
@@ -74,11 +82,11 @@ class MediaStoreImageProvider : ImageProvider() {
                 // skip entries in subfolders
                 val path = entry[EntryFields.PATH] as String?
                 if (path != null && File(path).parent == parentCheckDirectory) {
-                    handleNewEntry(entry)
+                    handleNewUnlessExcluded(entry)
                 }
             }
         } else {
-            handleNew = handleNewEntry
+            handleNew = handleNewUnlessExcluded
         }
         fetchFrom(context, isModified, handleNew, IMAGE_CONTENT_URI, IMAGE_PROJECTION, selection, selectionArgs)
         fetchFrom(context, isModified, handleNew, VIDEO_CONTENT_URI, VIDEO_PROJECTION, selection, selectionArgs)

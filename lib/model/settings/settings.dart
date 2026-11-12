@@ -400,6 +400,7 @@ class Settings
           case SettingKeys.convertWriteMetadataKey:
           case SettingKeys.mapShowItemTracksKey:
           case SettingKeys.saveSearchHistoryKey:
+          case SettingKeys.scanHiddenFoldersKey:
           case SettingKeys.showPinchGestureAlternativesKey:
           case SettingKeys.screenSaverFillScreenKey:
           case SettingKeys.screenSaverAnimatedZoomEffectKey:
@@ -472,6 +473,8 @@ class Settings
           case SettingKeys.pinnedFiltersKey:
           case SettingKeys.hiddenFiltersKey:
           case SettingKeys.deactivatedHiddenFiltersKey:
+          case SettingKeys.scanIncludedPathsKey:
+          case SettingKeys.scanExcludedPathsKey:
           case SettingKeys.collectionBrowsingQuickActionsKey:
           case SettingKeys.collectionSelectionQuickActionsKey:
           case SettingKeys.thumbnailCredentialValidityKey:

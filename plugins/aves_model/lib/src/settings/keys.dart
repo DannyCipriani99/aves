@@ -110,6 +110,9 @@ class SettingKeys {
   static const pinnedFiltersKey = 'pinned_filters';
   static const hiddenFiltersKey = 'hidden_filters';
   static const deactivatedHiddenFiltersKey = 'deactivated_hidden_filters';
+  static const scanIncludedPathsKey = 'scan_included_paths';
+  static const scanExcludedPathsKey = 'scan_excluded_paths';
+  static const scanHiddenFoldersKey = 'scan_hidden_folders';
   static const showTitleQueryPrefixKey = 'show_title_query_';
 
   // viewer

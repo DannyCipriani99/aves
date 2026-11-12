@@ -15,7 +15,16 @@ abstract class MediaStoreService {
   Future<Map<String, int>?> getGenerationByVolume();
 
   // knownEntries: map of contentId -> dateModifiedMillis
-  Stream<AvesEntry> getEntries(Map<int?, int?> knownEntries, {String? directory});
+  Stream<AvesEntry> getEntries(Map<int?, int?> knownEntries, {String? directory, List<String> excludedPaths = const []});
+
+  // scans directories directly on the file system, to reach items the Media Store does not index
+  // (e.g. in hidden or `.nomedia` directories)
+  Stream<AvesEntry> getFileEntries({
+    required List<String> includedPaths,
+    required Set<String> knownFilePaths,
+    required bool scanHidden,
+    List<String> excludedPaths = const [],
+  });
 
   // returns media URI
   Future<Uri?> scanFile(String path, String mimeType);
@@ -76,13 +85,33 @@ class PlatformMediaStoreService implements MediaStoreService {
   }
 
   @override
-  Stream<AvesEntry> getEntries(Map<int?, int?> knownEntries, {String? directory}) {
+  Stream<AvesEntry> getEntries(Map<int?, int?> knownEntries, {String? directory, List<String> excludedPaths = const []}) {
+    return _entryStream(<String, Object?>{
+      'knownEntries': knownEntries,
+      'directory': directory,
+      'excludedPaths': excludedPaths,
+    });
+  }
+
+  @override
+  Stream<AvesEntry> getFileEntries({
+    required List<String> includedPaths,
+    required Set<String> knownFilePaths,
+    required bool scanHidden,
+    List<String> excludedPaths = const [],
+  }) {
+    return _entryStream(<String, Object?>{
+      'includedPaths': includedPaths,
+      'knownFilePaths': knownFilePaths.toList(),
+      'scanHidden': scanHidden,
+      'excludedPaths': excludedPaths,
+    });
+  }
+
+  Stream<AvesEntry> _entryStream(Map<String, Object?> args) {
     try {
       return _stream
-          .receiveBroadcastStream(<String, Object?>{
-            'knownEntries': knownEntries,
-            'directory': directory,
-          })
+          .receiveBroadcastStream(args)
           .where((event) => event is Map)
           .map((event) {
             final fields = event as Map;

@@ -25,6 +25,13 @@
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <!--
+    Needed to scan user-included folders directly on the file system (hidden or `.nomedia` folders
+    are not indexed by the Media Store). The user has to grant "All files access" in the system settings.
+    -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <!--
     Scoped storage on Android 10 (API 29) is inconvenient because users need to confirm edition on each individual file.
     So we request `WRITE_EXTERNAL_STORAGE` until Android 10 (API 29), and enable `requestLegacyExternalStorage`
     -->
