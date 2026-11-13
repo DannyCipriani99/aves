@@ -13,6 +13,8 @@ jobs:
   build_apk:
     name: Build APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to create the release
     steps:
       - name: Set up JDK for Android Gradle plugin
         uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
@@ -65,3 +67,14 @@ jobs:
         with:
           name: aves-apk
           path: outputs/*.apk
+
+      # Publishes the APKs in the Releases list (only for builds of the main branch)
+      - name: Create release
+        if: github.ref_name == 'develop'
+        run: |
+          gh release create "build-${{ github.run_number }}" outputs/*.apk \
+            --target "${{ github.sha }}" \
+            --title "Build ${{ github.run_number }}" \
+            --notes "APK build from commit ${{ github.sha }}. For most phones, install the \`arm64-v8a\` file."
+        env:
+          GH_TOKEN: ${{ github.token }}
