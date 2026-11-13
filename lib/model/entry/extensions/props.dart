@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:aves/locale/aves_locale.dart';
 import 'package:aves/model/app/support.dart';
 import 'package:aves/model/entry/entry.dart';
+import 'package:aves/model/entry/origins.dart';
 import 'package:aves/model/settings/settings.dart';
 import 'package:aves/model/source/trash.dart';
 import 'package:aves/ref/mime_types.dart';
@@ -140,13 +141,16 @@ extension ExtraAvesEntryProps on AvesEntry {
 
   bool get _isVaultContent => path?.startsWith(androidFileUtils.vaultRoot) ?? false;
 
+  // items found by scanning folders directly on the file system
+  bool get _isFileContent => origin == EntryOrigins.file && uri.startsWith('file:');
+
   bool get _isMediaStoreContent => uri.startsWith(AndroidFileUtils.mediaStoreUriRoot);
 
   bool get isMediaStoreMediaContent => _isMediaStoreContent && AndroidFileUtils.mediaUriPathRoots.any(uri.contains);
 
   // edition
 
-  bool get canEdit => !settings.isReadOnly && path != null && !trashed && (_isMediaStoreContent || _isVaultContent);
+  bool get canEdit => !settings.isReadOnly && path != null && !trashed && (_isMediaStoreContent || _isVaultContent || _isFileContent);
 
   bool get canEditDate => canEdit && (isExifEditionSupported || isXmpEditionSupported);
 

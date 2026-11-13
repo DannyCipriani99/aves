@@ -94,7 +94,9 @@ abstract class CollectionSource with SourceBase, AlbumMixin, CountryMixin, Place
       }
     });
     // excluded folders take effect right away, without rescanning
-    settings.updateStream.where((event) => event.key == SettingKeys.scanExcludedPathsKey).listen((_) => _onFilterVisibilityChanged({}));
+    settings.updateStream
+        .where((event) => event.key == SettingKeys.scanExcludedPathsKey || event.key == SettingKeys.scanIncludedPathsKey || event.key == SettingKeys.scanHiddenFoldersKey)
+        .listen((_) => _onFilterVisibilityChanged({}));
     vaults.lockStateChangeNotifier.addListener(_onVaultsChanged);
   }
 
@@ -166,12 +168,14 @@ abstract class CollectionSource with SourceBase, AlbumMixin, CountryMixin, Place
       TrashFilter.instance,
       ..._getAppHiddenFilters(),
     };
-    return entries.where((entry) => !hiddenFilters.any((filter) => filter.test(entry))).where((entry) => !settings.isPathExcludedFromScan(entry.path));
+    final isExcluded = settings.scanPathExcluder();
+    return entries.where((entry) => !hiddenFilters.any((filter) => filter.test(entry))).where((entry) => !isExcluded(entry.path));
   }
 
   Iterable<AvesEntry> _applyTrashFilter(Iterable<AvesEntry> entries) {
     final hiddenFilters = _getAppHiddenFilters();
-    return entries.where(TrashFilter.instance.test).where((entry) => !hiddenFilters.any((filter) => filter.test(entry))).where((entry) => !settings.isPathExcludedFromScan(entry.path));
+    final isExcluded = settings.scanPathExcluder();
+    return entries.where(TrashFilter.instance.test).where((entry) => !hiddenFilters.any((filter) => filter.test(entry))).where((entry) => !isExcluded(entry.path));
   }
 
   void _invalidate({Set<AvesEntry>? entries, bool notify = true}) {

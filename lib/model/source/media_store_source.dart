@@ -61,13 +61,14 @@ class MediaStoreSource extends CollectionSource {
 
         final includedPaths = settings.scanIncludedPaths;
         if (includedPaths.isNotEmpty) {
-          final knownFilePaths = allEntries.where((entry) => entry.origin == EntryOrigins.file).map((entry) => entry.path).nonNulls.toSet();
+          // any known path, so that items already indexed by the Media Store are not added twice
+          final knownFilePaths = allEntries.map((entry) => entry.path).nonNulls.toSet();
           final newEntries = <AvesEntry>{};
           await for (final entry in mediaStoreService.getFileEntries(
             includedPaths: includedPaths,
             knownFilePaths: knownFilePaths,
             scanHidden: settings.scanHiddenFolders,
-            excludedPaths: settings.scanExcludedPaths,
+            excludedPaths: const [],
           )) {
             entry.id = localMediaDb.nextId;
             newEntries.add(entry);
@@ -178,7 +179,7 @@ class MediaStoreSource extends CollectionSource {
     final knownFileEntries = includedPaths.isEmpty || scopeDirectory != null ? <AvesEntry>{} : await localMediaDb.loadEntries(origin: EntryOrigins.file);
     final obsoleteFileEntries = knownFileEntries.where((entry) {
       final path = entry.path;
-      if (path == null || settings.isPathExcludedFromScan(path)) return true;
+      if (path == null) return true;
       // keep only entries that are still within an included directory and still exist
       return !settings.isPathIncludedInScan(path) || !File(path).existsSync();
     }).toSet();
@@ -201,8 +202,6 @@ class MediaStoreSource extends CollectionSource {
     }
     final removedEntries = knownEntries.where((entry) => removedContentIds.contains(entry.contentId)).toSet();
     knownEntries.removeAll(removedEntries);
-    // leave out entries of excluded directories (they remain in the DB so that excluding is reversible)
-    knownEntries.removeWhere((entry) => settings.isPathExcludedFromScan(entry.path));
     knownEntries.addAll(knownFileEntries);
 
     // show known entries
@@ -306,7 +305,7 @@ class MediaStoreSource extends CollectionSource {
               includedPaths: includedPaths,
               knownFilePaths: knownFilePaths,
               scanHidden: settings.scanHiddenFolders,
-              excludedPaths: settings.scanExcludedPaths,
+              excludedPaths: const [],
             )
             .toList();
         for (final entry in fileEntries) {
@@ -323,7 +322,7 @@ class MediaStoreSource extends CollectionSource {
     final knownContentIds = knownDateByContentId.keys.toSet();
     final knownEntryByContentId = Map.fromEntries(knownLiveEntries.map((entry) => MapEntry(entry.contentId, entry)));
     mediaStoreService
-        .getEntries(knownDateByContentId, directory: directory, excludedPaths: settings.scanExcludedPaths)
+        .getEntries(knownDateByContentId, directory: directory, excludedPaths: const [])
         .listen(
           (entry) {
             // when discovering modified entry with known content ID,
@@ -336,6 +335,13 @@ class MediaStoreSource extends CollectionSource {
             setProgress(done: newEntries.length, total: 0);
           },
           onDone: () async {
+            // items of included folders that are also indexed by the Media Store would show up twice
+            final indexedPaths = {
+              ...knownLiveEntries.map((entry) => entry.path),
+              ...newEntries.where((entry) => entry.origin != EntryOrigins.file).map((entry) => entry.path),
+            }.nonNulls.toSet();
+            newEntries.removeWhere((entry) => entry.origin == EntryOrigins.file && indexedPaths.contains(entry.path));
+
             if (newEntries.isNotEmpty) {
               // TODO TLAD [perf] perform DB ops with `newEntries` by chunks
               debugPrint('$runtimeType load ${stopwatch.elapsed} save ${newEntries.length} new entries');

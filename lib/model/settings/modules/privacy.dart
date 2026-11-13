@@ -1,6 +1,7 @@
 import 'package:aves/model/filters/filters.dart';
 import 'package:aves/model/settings/defaults.dart';
 import 'package:aves/model/settings/modules/history.dart';
+import 'package:aves/utils/android_file_utils.dart';
 import 'package:aves_model/aves_model.dart';
 
 mixin PrivacySettings on SettingsAccess, HistorySettings {
@@ -34,13 +35,51 @@ mixin PrivacySettings on SettingsAccess, HistorySettings {
     });
   }
 
-  // `true` if the file at `path` is located in (or below) one of the excluded directories
-  bool isPathExcludedFromScan(String? path) {
-    if (path == null) return false;
-    final excluded = scanExcludedPaths;
-    if (excluded.isEmpty) return false;
-    return excluded.any((dirPath) => path.startsWith(_asDirPrefix(dirPath)));
+  static int _longestMatchingPrefix(List<String> dirs, String path) {
+    var best = -1;
+    for (final dir in dirs) {
+      final prefix = _asDirPrefix(dir);
+      if (prefix.length > best && path.startsWith(prefix)) best = prefix.length;
+    }
+    return best;
   }
+
+  // Returns a test telling whether an item path is left out of the collection, according to the scan rules:
+  // - the most specific folder rule wins, so a folder included inside an excluded one is still shown,
+  //   (e.g. exclude `/storage/emulated/0`, include `/storage/emulated/0/Ex` => only `Ex` is shown)
+  // - when hidden folders are not shown, items in dot-prefixed folders are left out
+  //   (relative to the included folder when there is one, otherwise to the storage volume root)
+  // The lists are read once, so this is cheap to call for many paths.
+  bool Function(String? path) scanPathExcluder() {
+    final excluded = scanExcludedPaths;
+    final included = scanIncludedPaths;
+    final showHidden = scanHiddenFolders;
+    if (excluded.isEmpty && included.isEmpty && showHidden) return (_) => false;
+
+    return (path) {
+      if (path == null) return false;
+      final excludedLen = _longestMatchingPrefix(excluded, path);
+      final includedLen = _longestMatchingPrefix(included, path);
+      if (excludedLen > includedLen) return true;
+      if (!showHidden && !path.startsWith(androidFileUtils.vaultRoot)) {
+        int? rootLen;
+        if (includedLen >= 0) {
+          rootLen = includedLen;
+        } else {
+          final volumePath = androidFileUtils.getStorageVolume(path)?.path;
+          if (volumePath != null) rootLen = _asDirPrefix(volumePath).length;
+        }
+        if (rootLen != null && rootLen <= path.length) {
+          final segments = path.substring(rootLen).split('/');
+          // the last segment is the file name
+          if (segments.length > 1 && segments.take(segments.length - 1).any((segment) => segment.startsWith('.'))) return true;
+        }
+      }
+      return false;
+    };
+  }
+
+  bool isPathExcludedFromScan(String? path) => scanPathExcluder()(path);
 
   Set<CollectionFilter> get hiddenFilters => (getStringList(SettingKeys.hiddenFiltersKey) ?? []).map(CollectionFilter.fromJson).nonNulls.toSet();
 

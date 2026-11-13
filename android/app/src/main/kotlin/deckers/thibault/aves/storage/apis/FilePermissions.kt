@@ -2,6 +2,7 @@ package deckers.thibault.aves.storage.apis
 
 import android.content.Context
 import android.os.Build
+import android.os.Environment
 import deckers.thibault.aves.storage.StorageUtils
 
 object FilePermissions : StoragePermissions {
@@ -13,6 +14,11 @@ object FilePermissions : StoragePermissions {
             // from API 30 / Android 11 / R, any storage requires access permission
             if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
                 add(StorageUtils.getPrimaryVolumePath(context))
+            }
+
+            // with "All files access", any storage volume can be edited directly (incl. hidden or `.nomedia` directories)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
+                addAll(StorageUtils.getVolumePaths(context))
             }
         }
     }
