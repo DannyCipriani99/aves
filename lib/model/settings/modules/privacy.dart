@@ -22,6 +22,18 @@ mixin PrivacySettings on SettingsAccess, HistorySettings {
 
   static String _asDirPrefix(String dirPath) => dirPath.endsWith('/') ? dirPath : '$dirPath/';
 
+  // `true` if `path` is below one of the included directories, and not under a hidden (dot-prefixed) sub-path
+  // (unless hidden folders are scanned)
+  bool isPathIncludedInScan(String path) {
+    final hiddenAllowed = scanHiddenFolders;
+    return scanIncludedPaths.any((dirPath) {
+      final prefix = _asDirPrefix(dirPath);
+      if (!path.startsWith(prefix)) return false;
+      if (hiddenAllowed) return true;
+      return !path.substring(prefix.length).split('/').any((segment) => segment.startsWith('.'));
+    });
+  }
+
   // `true` if the file at `path` is located in (or below) one of the excluded directories
   bool isPathExcludedFromScan(String? path) {
     if (path == null) return false;

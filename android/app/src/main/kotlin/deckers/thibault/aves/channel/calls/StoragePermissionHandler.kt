@@ -1,6 +1,11 @@
 package deckers.thibault.aves.channel.calls
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings
 import deckers.thibault.aves.channel.calls.Coresult.Companion.safe
 import deckers.thibault.aves.storage.PermissionManager
 import deckers.thibault.aves.storage.StorageUtils.ensureTrailingSeparator
@@ -24,8 +29,32 @@ class StoragePermissionHandler(private val context: Context) : MethodCallHandler
             "getSafGrantedDirectories" -> ioScope.launch { safe(call, result, ::getSafGrantedDirectories) }
             "revokeSafDirectoryAccess" -> safe(call, result, ::revokeSafDirectoryAccess)
             "canRequestMediaStoreBulkAccess" -> safe(call, result, ::canRequestMediaStoreBulkAccess)
+            "hasAllFilesAccess" -> safe(call, result, ::hasAllFilesAccess)
+            "requestAllFilesAccess" -> safe(call, result, ::requestAllFilesAccess)
             else -> result.notImplemented()
         }
+    }
+
+    // "All files access" is needed to read directly from hidden or `.nomedia` directories
+    private fun hasAllFilesAccess(@Suppress("unused_parameter") call: MethodCall, result: MethodChannel.Result) {
+        result.success(Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager())
+    }
+
+    // opens the system settings page where the user can grant "All files access" to the app
+    private fun requestAllFilesAccess(@Suppress("unused_parameter") call: MethodCall, result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager()) {
+            result.success(true)
+            return
+        }
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
+        result.success(false)
     }
 
     private fun getEditionApis(call: MethodCall, result: MethodChannel.Result) {

@@ -1042,7 +1042,8 @@
   "settingsScanExcludedPaths": "Folders to exclude",
   "settingsScanPathsEmpty": "No folders",
   "settingsScanAddPathTooltip": "Add folder",
-  "settingsScanPathsApplyHint": "Changes apply the next time the collection is scanned (e.g. when restarting the app).",
+  "settingsScanPathsApplyHint": "Excluded folders are hidden right away. Included folders are scanned as soon as you add them.",
+  "settingsScanAllFilesAccessMessage": "Allow \"All files access\" for this app in the settings that just opened, then come back and add the folder again.",
 
   "settingsHiddenFiltersBanner": "Photos and videos matching hidden filters will not appear in your collection.",
   "settingsHiddenFiltersEmpty": "No hidden filters",

@@ -28,6 +28,67 @@ class MediaStoreSource extends CollectionSource {
   bool _canAnalyze = true;
   Future<void>? _essentialLoader;
 
+  MediaStoreSource() {
+    // included folders (and the hidden folders option) take effect right away
+    settings.updateStream
+        .where((event) => event.key == SettingKeys.scanIncludedPathsKey || event.key == SettingKeys.scanHiddenFoldersKey)
+        .listen((_) => unawaited(_rescanIncludedPaths()));
+  }
+
+  bool _rescanning = false, _rescanAgain = false;
+
+  Future<void> _rescanIncludedPaths() async {
+    if (_essentialLoader == null || !isReady || !_canAnalyze) return;
+    if (_rescanning) {
+      _rescanAgain = true;
+      return;
+    }
+    _rescanning = true;
+    try {
+      do {
+        _rescanAgain = false;
+        state = SourceState.loading;
+
+        // drop file entries that are no longer in an included folder (or now in a hidden one)
+        final fileEntries = allEntries.where((entry) => entry.origin == EntryOrigins.file).toSet();
+        final obsoleteUris = fileEntries.where((entry) {
+          final path = entry.path;
+          return path == null || !settings.isPathIncludedInScan(path);
+        }).map((entry) => entry.uri).toSet();
+        await removeEntries(obsoleteUris, includeTrash: true);
+
+        final includedPaths = settings.scanIncludedPaths;
+        if (includedPaths.isNotEmpty) {
+          final knownFilePaths = allEntries.where((entry) => entry.origin == EntryOrigins.file).map((entry) => entry.path).nonNulls.toSet();
+          final newEntries = <AvesEntry>{};
+          await for (final entry in mediaStoreService.getFileEntries(
+            includedPaths: includedPaths,
+            knownFilePaths: knownFilePaths,
+            scanHidden: settings.scanHiddenFolders,
+            excludedPaths: settings.scanExcludedPaths,
+          )) {
+            entry.id = localMediaDb.nextId;
+            newEntries.add(entry);
+            setProgress(done: newEntries.length, total: 0);
+          }
+          if (newEntries.isNotEmpty) {
+            await localMediaDb.insertEntries(newEntries);
+            addEntries(newEntries);
+            invalidateAlbumFilterSummary();
+            updateDirectories();
+            await analyze(null, entries: newEntries);
+            notifyAlbumsChanged();
+          }
+        }
+      } while (_rescanAgain);
+    } catch (error) {
+      debugPrint('$runtimeType rescan of included paths error=$error');
+    } finally {
+      _rescanning = false;
+      state = SourceState.ready;
+    }
+  }
+
   @override
   set canAnalyze(bool enabled) => _canAnalyze = enabled;
 
@@ -117,8 +178,7 @@ class MediaStoreSource extends CollectionSource {
       final path = entry.path;
       if (path == null || settings.isPathExcludedFromScan(path)) return true;
       // keep only entries that are still within an included directory and still exist
-      final isIncluded = includedPaths.any((dirPath) => path.startsWith(dirPath.endsWith('/') ? dirPath : '$dirPath/'));
-      return !isIncluded || !File(path).existsSync();
+      return !settings.isPathIncludedInScan(path) || !File(path).existsSync();
     }).toSet();
     knownFileEntries.removeAll(obsoleteFileEntries);
     final isLargeCollection = knownEntries.length > 100000;

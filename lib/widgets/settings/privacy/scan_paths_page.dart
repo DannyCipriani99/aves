@@ -54,6 +54,7 @@ class ScanPathsPage extends StatelessWidget {
             ),
             const ThinDivider(),
             _PathListSection(
+              needsAllFilesAccess: true,
               title: l10n.settingsScanIncludedPaths,
               empty: l10n.settingsScanPathsEmpty,
               selector: (s) => s.scanIncludedPaths,
@@ -82,12 +83,14 @@ class ScanPathsPage extends StatelessWidget {
 
 class _PathListSection extends StatelessWidget with PermissionAwareMixin {
   const _PathListSection({
+    this.needsAllFilesAccess = false,
     required this.title,
     required this.empty,
     required this.selector,
     required this.onChanged,
   });
 
+  final bool needsAllFilesAccess;
   final String title;
   final String empty;
   final List<String> Function(Settings settings) selector;
@@ -95,6 +98,14 @@ class _PathListSection extends StatelessWidget with PermissionAwareMixin {
 
   Future<void> _add(BuildContext context) async {
     if (!await checkSystemFilePickerEnabled(context)) return;
+
+    if (needsAllFilesAccess && !await storagePermissionService.hasAllFilesAccess()) {
+      // opens the system settings; the user can come back and add the folder once granted
+      await storagePermissionService.requestAllFilesAccess();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.settingsScanAllFilesAccessMessage)));
+      return;
+    }
 
     final dirPath = await storagePermissionService.requestSafAnyDirectoryAccess();
     if (dirPath == null) return;

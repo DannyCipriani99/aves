@@ -28,6 +28,12 @@ abstract class StoragePermissionService {
 
   Future<bool> canRequestMediaStoreBulkAccess();
 
+  // "All files access", needed to scan hidden or `.nomedia` directories
+  Future<bool> hasAllFilesAccess();
+
+  // opens the system settings page for "All files access", returns whether it is already granted
+  Future<bool> requestAllFilesAccess();
+
   // returns whether user granted access to URIs
   Future<bool> requestMediaStoreWriteAccess(List<String> uris, List<String> mimeTypes, List<String> paths);
 }
@@ -148,6 +154,28 @@ class PlatformStoragePermissionService implements StoragePermissionService {
   Future<bool> canRequestMediaStoreBulkAccess() async {
     try {
       final result = await _platform.invokeMethod('canRequestMediaStoreBulkAccess');
+      if (result != null) return result as bool;
+    } on PlatformException catch (e, stack) {
+      await reportService.recordError(e, stack);
+    }
+    return false;
+  }
+
+  @override
+  Future<bool> hasAllFilesAccess() async {
+    try {
+      final result = await _platform.invokeMethod('hasAllFilesAccess');
+      if (result != null) return result as bool;
+    } on PlatformException catch (e, stack) {
+      await reportService.recordError(e, stack);
+    }
+    return false;
+  }
+
+  @override
+  Future<bool> requestAllFilesAccess() async {
+    try {
+      final result = await _platform.invokeMethod('requestAllFilesAccess');
       if (result != null) return result as bool;
     } on PlatformException catch (e, stack) {
       await reportService.recordError(e, stack);
