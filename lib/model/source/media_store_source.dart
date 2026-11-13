@@ -32,12 +32,13 @@ class MediaStoreSource extends CollectionSource {
     // included folders (and the hidden folders option) take effect right away
     settings.updateStream
         .where((event) => event.key == SettingKeys.scanIncludedPathsKey || event.key == SettingKeys.scanHiddenFoldersKey)
-        .listen((_) => unawaited(_rescanIncludedPaths()));
+        .listen((_) => unawaited(rescanIncludedPaths()));
   }
 
   bool _rescanning = false, _rescanAgain = false;
 
-  Future<void> _rescanIncludedPaths() async {
+  @override
+  Future<void> rescanIncludedPaths() async {
     if (_essentialLoader == null || !isReady || !_canAnalyze) return;
     if (_rescanning) {
       _rescanAgain = true;
@@ -53,7 +54,8 @@ class MediaStoreSource extends CollectionSource {
         final fileEntries = allEntries.where((entry) => entry.origin == EntryOrigins.file).toSet();
         final obsoleteUris = fileEntries.where((entry) {
           final path = entry.path;
-          return path == null || !settings.isPathIncludedInScan(path);
+          // also drop entries whose file was deleted since the last scan
+          return path == null || !settings.isPathIncludedInScan(path) || !File(path).existsSync();
         }).map((entry) => entry.uri).toSet();
         await removeEntries(obsoleteUris, includeTrash: true);
 

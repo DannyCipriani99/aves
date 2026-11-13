@@ -111,6 +111,9 @@ abstract class CollectionSource with SourceBase, AlbumMixin, CountryMixin, Place
 
   set canAnalyze(bool enabled);
 
+  // re-scans user-included folders (no-op for sources that do not support it)
+  Future<void> rescanIncludedPaths() async {}
+
   final EventBus _eventBus = EventBus();
 
   @override

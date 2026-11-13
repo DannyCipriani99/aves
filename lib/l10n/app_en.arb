@@ -1044,6 +1044,13 @@
   "settingsScanAddPathTooltip": "Add folder",
   "settingsScanPathsApplyHint": "Excluded folders are hidden right away. Included folders are scanned as soon as you add them.",
   "settingsScanAllFilesAccessMessage": "Allow \"All files access\" for this app in the settings that just opened, then come back and add the folder again.",
+  "settingsScanPickFolderTitle": "Choose folder",
+  "settingsScanSelectThisFolder": "Select this folder",
+  "settingsScanRefreshTooltip": "Refresh",
+  "settingsScanFolderUnreadable": "This folder cannot be read. Make sure \"All files access\" is allowed for this app.",
+  "settingsScanNoSubfolders": "No subfolders",
+  "settingsScanRescanTooltip": "Rescan folders",
+  "settingsScanRescanStarted": "Scanning included folders…",
 
   "settingsHiddenFiltersBanner": "Photos and videos matching hidden filters will not appear in your collection.",
   "settingsHiddenFiltersEmpty": "No hidden filters",

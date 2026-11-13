@@ -1,11 +1,12 @@
 import 'package:aves/model/settings/settings.dart';
+import 'package:aves/model/source/collection_source.dart';
 import 'package:aves/services/common/services.dart';
 import 'package:aves/theme/icons.dart';
-import 'package:aves/widgets/common/action_mixins/permission_aware.dart';
 import 'package:aves/widgets/common/basic/divider.dart';
 import 'package:aves/widgets/common/basic/font_size_icon_theme.dart';
 import 'package:aves/widgets/common/basic/scaffold.dart';
 import 'package:aves/widgets/common/extensions/build_context.dart';
+import 'package:aves/widgets/settings/privacy/folder_picker_page.dart';
 import 'package:aves/widgets/settings/common/tiles/switch_list.dart';
 import 'package:aves_model/aves_model.dart';
 import 'package:material_ui/material_ui.dart';
@@ -24,6 +25,13 @@ class ScanPathsPage extends StatelessWidget {
     SettingKeys.scanHiddenFoldersKey,
   ];
 
+  Future<void> _rescan(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final message = context.l10n.settingsScanRescanStarted;
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+    await context.read<CollectionSource>().rescanIncludedPaths();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -31,6 +39,13 @@ class ScanPathsPage extends StatelessWidget {
       appBar: AppBar(
         automaticallyImplyLeading: !settings.useTvLayout,
         title: Text(l10n.settingsScanPathsPageTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(AIcons.refresh),
+            tooltip: l10n.settingsScanRescanTooltip,
+            onPressed: () => _rescan(context),
+          ),
+        ],
       ),
       body: SafeArea(
         child: ListView(
@@ -54,7 +69,6 @@ class ScanPathsPage extends StatelessWidget {
             ),
             const ThinDivider(),
             _PathListSection(
-              needsAllFilesAccess: true,
               title: l10n.settingsScanIncludedPaths,
               empty: l10n.settingsScanPathsEmpty,
               selector: (s) => s.scanIncludedPaths,
@@ -81,25 +95,21 @@ class ScanPathsPage extends StatelessWidget {
   }
 }
 
-class _PathListSection extends StatelessWidget with PermissionAwareMixin {
+class _PathListSection extends StatelessWidget {
   const _PathListSection({
-    this.needsAllFilesAccess = false,
     required this.title,
     required this.empty,
     required this.selector,
     required this.onChanged,
   });
 
-  final bool needsAllFilesAccess;
   final String title;
   final String empty;
   final List<String> Function(Settings settings) selector;
   final void Function(List<String> paths) onChanged;
 
   Future<void> _add(BuildContext context) async {
-    if (!await checkSystemFilePickerEnabled(context)) return;
-
-    if (needsAllFilesAccess && !await storagePermissionService.hasAllFilesAccess()) {
+    if (!await storagePermissionService.hasAllFilesAccess()) {
       // opens the system settings; the user can come back and add the folder once granted
       await storagePermissionService.requestAllFilesAccess();
       if (!context.mounted) return;
@@ -107,7 +117,8 @@ class _PathListSection extends StatelessWidget with PermissionAwareMixin {
       return;
     }
 
-    final dirPath = await storagePermissionService.requestSafAnyDirectoryAccess();
+    if (!context.mounted) return;
+    final dirPath = await FolderPickerPage.pick(context);
     if (dirPath == null) return;
 
     final current = selector(settings);
