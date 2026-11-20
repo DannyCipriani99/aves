@@ -22,21 +22,6 @@ All options are in **Settings → Privacy → Scan folders**.
 
 Reading and editing hidden or `.nomedia` folders needs **All files access**. The app opens the right settings page the first time you add a folder. Because of this permission, this fork is meant to be installed manually, not from an app store.
 
-## Get the app
-
-Download the APK from the [Releases](../../releases) page of this repository. For most phones, choose the file named `arm64-v8a`.
-
-## Build it yourself
-
-Go to the **Actions** tab, choose **Build APK**, and press **Run workflow** on the `develop` branch. When the build finishes, the APK files are published in [Releases](../../releases). The APKs are signed with a throwaway key, so a new build may need an uninstall of the previous one before installing.
-
-To build locally instead:
-
-```
-scripts/apply_flavor_libre.sh
-./flutterw build apk -t lib/main_libre.dart --flavor libre --split-per-abi
-```
-
 ## Credits and license
 
 Aves is created by [Thibault Deckers](https://github.com/deckerst). Original project: <https://github.com/deckerst/aves>. This fork keeps the original [BSD 3-Clause license](LICENSE).
